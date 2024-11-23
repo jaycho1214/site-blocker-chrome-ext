@@ -1,0 +1,194 @@
+:root {
+  --background: #f9f7f3; /* Retained */
+  --cardBackground: #ece7df; /* Retained */
+  --cardForeground: #76c7c0; /* New color */
+  --border: #8b8b8b; /* New color */
+  --cardSelectedForeground: #ffcb77; /* New color */
+}
+
+body {
+  margin: 0;
+  position: relative;
+  background-color: var(--background);
+}
+
+svg {
+  width: 20px;
+  height: 20px;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background-color: var(--border);
+}
+
+.header {
+  background-color: var(--cardBackground);
+  height: 40px;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.container {
+  width: 350px;
+  height: 540px;
+  background-color: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+.tab__container {
+  flex: 1;
+  overflow-x: hidden;
+}
+
+.tab__btn__container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: var(--cardBackground);
+  height: 40px;
+}
+
+.tab__btn {
+  all: unset;
+  flex: 1;
+  text-align: center;
+  cursor: pointer;
+  height: 40px;
+  stroke-width: 1;
+}
+
+.tab__btn[data-selected="true"] {
+  background-color: var(--cardForeground);
+  stroke-width: 2;
+}
+
+/* 
+#######################
+### Block List Page ###
+#######################
+*/
+
+.blocklist__container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 12px;
+}
+
+.blocklist__info__container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.blocklist__info__container > h2 {
+  flex: 1;
+  width: 100%;
+  text-overflow: ellipsis;
+}
+
+.blocklist__info__container > img {
+  height: 50px;
+}
+
+.blocklist_btn_container {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  gap: 12px;
+}
+
+.blocklist_btn_container button {
+  flex: 1;
+}
+
+.blocklist_btn {
+  all: unset;
+  background-color: var(--cardSelectedForeground);
+  border-radius: 8px;
+  padding: 8px 8px;
+  text-align: center;
+  transition: opacity 0.3s;
+  cursor: pointer;
+}
+
+.blocklist_btn:hover,
+.blocklist_btn:disabled {
+  opacity: 0.5;
+}
+
+.blocklist_url_container {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  width: 100%;
+}
+
+.blocklist_url_input {
+  flex: 1;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  padding: 4px 8px;
+}
+
+.blocklist_list_container {
+  flex: 1;
+  width: 100%;
+}
+
+.blocklist__row {
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  gap: 2px;
+  align-items: center;
+  width: 100%;
+}
+
+.blocklist__row span {
+  flex: 1;
+}
+
+.blocklist__row button {
+  all: unset;
+  cursor: pointer;
+}
+
+/* 
+#####################
+### Settings Page ###
+#####################
+*/
+
+.settings__container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 12px;
+}
+
+.settings__row__container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--cardBackground);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.settings__row__container p {
+  font-weight: bold;
+  margin: 0;
+}
