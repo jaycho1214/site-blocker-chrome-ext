@@ -1,0 +1,235 @@
+import { Settings, Shield, Zap } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
+import { toast } from "sonner"
+
+import { BlockActions } from "~components/dashboard/block-actions"
+import { BlockList } from "~components/dashboard/block-list"
+import { IncognitoAlert } from "~components/dashboard/incognito-alert"
+import { SettingsPage } from "~components/dashboard/settings-page"
+import { Toaster } from "~components/ui/sonner"
+
+import "~globals.css"
+
+import { useStorage } from "@plasmohq/storage/hook"
+
+interface BlockAction {
+  type: "redirect" | "close" | "warning"
+  redirectUrl?: string
+  warningTemplate?: string
+}
+
+const tabs = [
+  { id: "blocklists", label: "Blocks", icon: Shield },
+  { id: "actions", label: "Rules", icon: Zap },
+  { id: "settings", label: "Config", icon: Settings }
+]
+
+export default function DashboardPage() {
+  const [activeSection, setActiveSection] = useState("blocklists")
+  const [blockLists, setBlockLists] = useStorage<string[]>(
+    "site.block.list",
+    []
+  )
+  const [blockAction, setBlockAction] = useStorage<BlockAction>(
+    "site.block.action",
+    {
+      type: "redirect",
+      redirectUrl: "https://google.com",
+      warningTemplate: "minimal"
+    }
+  )
+  const [deletionDelay] = useStorage<boolean>(
+    "site.block.deletion.delay",
+    false
+  )
+  const [pendingDeletions, setPendingDeletions] = useStorage<
+    Record<string, number>
+  >("site.block.pending.deletions", {})
+  const [newUrl, setNewUrl] = useState("")
+
+  const normalizeUrl = (url: string) => {
+    try {
+      const parsed = new URL(url.startsWith("http") ? url : `https://${url}`)
+      return parsed.hostname
+    } catch {
+      return url
+    }
+  }
+
+  const addUrl = useCallback(() => {
+    if (!newUrl.trim()) return
+
+    const trimmedUrl = newUrl.trim()
+    const normalizedUrl = normalizeUrl(trimmedUrl)
+
+    if (blockLists.includes(trimmedUrl)) return
+
+    // Check if trying to add redirect URL
+    if (blockAction.type === "redirect" && blockAction.redirectUrl) {
+      const normalizedRedirectUrl = normalizeUrl(blockAction.redirectUrl)
+      if (
+        normalizedUrl === normalizedRedirectUrl ||
+        trimmedUrl === blockAction.redirectUrl
+      ) {
+        toast.error("Cannot block redirect URL", {
+          description:
+            "The redirect destination cannot be added to the block list"
+        })
+        return
+      }
+    }
+
+    setBlockLists([...blockLists, trimmedUrl])
+    setNewUrl("")
+  }, [newUrl, blockLists, setBlockLists, blockAction])
+
+  const removeUrl = useCallback(
+    (urlToRemove: string) => {
+      if (deletionDelay) {
+        const now = Date.now()
+        const existingPendingTime = pendingDeletions[urlToRemove]
+
+        if (existingPendingTime) {
+          const timeLeft = 24 * 60 * 60 * 1000 - (now - existingPendingTime)
+          if (timeLeft > 0) {
+            const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000))
+            alert(`Must wait ${hoursLeft} more hours before deleting this site`)
+            return
+          }
+        }
+
+        setPendingDeletions({
+          ...pendingDeletions,
+          [urlToRemove]: now
+        })
+
+        setTimeout(
+          () => {
+            setBlockLists((prev) => prev.filter((url) => url !== urlToRemove))
+            setPendingDeletions((prev) => {
+              const updated = { ...prev }
+              delete updated[urlToRemove]
+              return updated
+            })
+          },
+          24 * 60 * 60 * 1000
+        )
+
+        alert("Site will be removed in 24 hours")
+      } else {
+        setBlockLists(blockLists.filter((url) => url !== urlToRemove))
+      }
+    },
+    [
+      blockLists,
+      setBlockLists,
+      deletionDelay,
+      pendingDeletions,
+      setPendingDeletions
+    ]
+  )
+
+  const updateBlockAction = useCallback(
+    (
+      type: BlockAction["type"],
+      redirectUrl?: string,
+      warningTemplate?: string
+    ) => {
+      setBlockAction({ type, redirectUrl, warningTemplate })
+    },
+    [setBlockAction]
+  )
+
+  const renderContent = useMemo(() => {
+    switch (activeSection) {
+      case "blocklists":
+        return (
+          <BlockList
+            blockLists={blockLists}
+            newUrl={newUrl}
+            onNewUrlChange={setNewUrl}
+            onAddUrl={addUrl}
+            onRemoveUrl={removeUrl}
+            pendingDeletions={pendingDeletions}
+          />
+        )
+      case "actions":
+        return (
+          <BlockActions
+            blockAction={blockAction}
+            onUpdateBlockAction={updateBlockAction}
+          />
+        )
+      case "settings":
+        return <SettingsPage blockListsCount={blockLists.length} />
+      default:
+        return (
+          <BlockList
+            blockLists={blockLists}
+            newUrl={newUrl}
+            onNewUrlChange={setNewUrl}
+            onAddUrl={addUrl}
+            onRemoveUrl={removeUrl}
+            pendingDeletions={pendingDeletions}
+          />
+        )
+    }
+  }, [
+    activeSection,
+    blockLists,
+    newUrl,
+    addUrl,
+    removeUrl,
+    blockAction,
+    updateBlockAction,
+    pendingDeletions
+  ])
+
+  return (
+    <div className="min-h-screen bg-black text-white">
+      {/* Ultra-minimal header */}
+      <div className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl">
+        <div className="max-w-4xl mx-auto px-3 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-white rounded-sm flex items-center justify-center">
+                <Shield className="w-3 h-3 text-black" />
+              </div>
+              <span className="font-mono text-sm font-semibold">siteblock</span>
+            </div>
+
+            {/* Segment control tabs */}
+            <div className="flex items-center bg-zinc-900 rounded-md p-0.5">
+              {tabs.map((tab) => {
+                const Icon = tab.icon
+                const isActive = activeSection === tab.id
+
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveSection(tab.id)}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all ${
+                      isActive
+                        ? "bg-white text-black shadow-sm"
+                        : "text-zinc-400 hover:text-zinc-200"
+                    }`}>
+                    <Icon className="w-3 h-3" />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-4xl mx-auto px-3 py-3">
+        <IncognitoAlert />
+        {renderContent}
+      </div>
+
+      <Toaster />
+    </div>
+  )
+}
