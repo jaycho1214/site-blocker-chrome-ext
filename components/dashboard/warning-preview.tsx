@@ -1,4 +1,4 @@
-import { getTemplateById } from "~lib/warning-templates"
+import { WARNING_TEMPLATES } from "~lib/warning-templates"
 
 interface WarningPreviewProps {
   templateId?: string
@@ -7,7 +7,7 @@ interface WarningPreviewProps {
 export function WarningPreview({
   templateId = "minimal"
 }: WarningPreviewProps) {
-  const template = getTemplateById(templateId)
+  const template = WARNING_TEMPLATES[templateId]
 
   if (!template) return null
 
