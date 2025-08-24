@@ -49,11 +49,7 @@ async function main() {
       return href === blockedUrl || href.startsWith(blockedUrl)
     }
     // Otherwise it's a domain - check if hostname matches
-    return (
-      hostname === blockedUrl ||
-      hostname.endsWith("." + blockedUrl) ||
-      blockedUrl.includes(hostname)
-    )
+    return hostname === blockedUrl || hostname.endsWith("." + blockedUrl)
   })
 
   if (mustBlocked) {
