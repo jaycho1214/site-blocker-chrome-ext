@@ -62,7 +62,7 @@ export function BlockList({
             <span className="text-xs text-zinc-600">no blocks yet</span>
           </div>
         ) : (
-          <div className="max-h-64 overflow-y-auto">
+          <div>
             {blockLists.map((url, index) => {
               const isPending = pendingDeletions[url]
               const timeLeft = isPending
