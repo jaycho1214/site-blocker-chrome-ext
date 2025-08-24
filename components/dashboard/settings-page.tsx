@@ -195,13 +195,16 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
               <span>24h delete delay</span>
             </div>
             <div className="flex items-center gap-1">
-              {deletionDelay && (
+              {deletionDelay && !delayToggleTime && (
                 <span className="text-green-400 text-[10px]">on</span>
               )}
               {deletionDelay && delayToggleTime && getTimeLeft() > 0 && (
-                <span className="text-amber-400 text-[10px]">
+                <span className="text-[8px] font-mono text-amber-400 bg-amber-950/50 px-1 rounded">
                   {Math.ceil(getTimeLeft() / (60 * 60 * 1000))}h left
                 </span>
+              )}
+              {deletionDelay && delayToggleTime && getTimeLeft() <= 0 && (
+                <span className="text-green-400 text-[10px]">ready</span>
               )}
             </div>
           </button>
