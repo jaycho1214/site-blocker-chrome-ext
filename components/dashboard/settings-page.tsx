@@ -1,5 +1,5 @@
 import { ExternalLink } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
@@ -20,6 +20,9 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
   )
   const [showDialog, setShowDialog] = useState(false)
   const [dialogAction, setDialogAction] = useState<"enable" | "disable" | null>(
+    null
+  )
+  const [hasIncognitoAccess, setHasIncognitoAccess] = useState<boolean | null>(
     null
   )
 
@@ -68,6 +71,25 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     return Math.max(0, timeLeft)
   }
 
+  useEffect(() => {
+    // Check if extension has incognito access
+    const checkIncognitoAccess = () => {
+      if (typeof chrome !== "undefined" && chrome.extension) {
+        chrome.extension.isAllowedIncognitoAccess((isAllowed) => {
+          setHasIncognitoAccess(isAllowed)
+        })
+      }
+    }
+
+    checkIncognitoAccess()
+  }, [])
+
+  const openExtensionSettings = () => {
+    chrome.tabs.create({
+      url: `chrome://extensions/?id=${chrome.runtime.id}`
+    })
+  }
+
   return (
     <div className="space-y-2">
       {/* Stats */}
@@ -100,7 +122,7 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
           <span className="text-xs font-mono text-zinc-400">protection</span>
         </div>
 
-        <div className="p-1">
+        <div className="p-1 space-y-1">
           <button
             onClick={() => handleDelayToggle()}
             className="w-full flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all">
@@ -111,6 +133,23 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
             <div className="flex items-center gap-1">
               {deletionDelay && (
                 <span className="text-green-400 text-[10px]">on</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={openExtensionSettings}
+            className="w-full flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all">
+            <div className="flex items-center gap-2">
+              <span className="w-4 text-center">🕵️</span>
+              <span>incognito mode</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {hasIncognitoAccess === true && (
+                <span className="text-green-400 text-[10px]">on</span>
+              )}
+              {hasIncognitoAccess === false && (
+                <span className="text-amber-400 text-[10px]">off</span>
               )}
             </div>
           </button>
