@@ -25,6 +25,10 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
   const [hasIncognitoAccess, setHasIncognitoAccess] = useState<boolean | null>(
     null
   )
+  const [debugMode, setDebugMode] = useStorage<boolean>(
+    "site.block.debug.mode",
+    false
+  )
 
   const handleDelayToggle = () => {
     if (!deletionDelay) {
@@ -150,6 +154,20 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
               )}
               {hasIncognitoAccess === false && (
                 <span className="text-amber-400 text-[10px]">off</span>
+              )}
+            </div>
+          </button>
+
+          <button
+            onClick={() => setDebugMode(!debugMode)}
+            className="w-full flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all">
+            <div className="flex items-center gap-2">
+              <span className="w-4 text-center">🐛</span>
+              <span>debug mode</span>
+            </div>
+            <div className="flex items-center gap-1">
+              {debugMode && (
+                <span className="text-amber-400 text-[10px]">on</span>
               )}
             </div>
           </button>

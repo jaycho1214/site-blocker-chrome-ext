@@ -6,6 +6,7 @@ import { BlockActions } from "~components/dashboard/block-actions"
 import { BlockList } from "~components/dashboard/block-list"
 import { IncognitoAlert } from "~components/dashboard/incognito-alert"
 import { SettingsPage } from "~components/dashboard/settings-page"
+import { SiteDeletionDialog } from "~components/dashboard/site-deletion-dialog"
 import { Toaster } from "~components/ui/sonner"
 
 import "~globals.css"
@@ -45,7 +46,14 @@ export default function DashboardPage() {
   const [pendingDeletions, setPendingDeletions] = useStorage<
     Record<string, number>
   >("site.block.pending.deletions", {})
+  const [isDebugMode] = useStorage<boolean>("site.block.debug.mode", false)
   const [newUrl, setNewUrl] = useState("")
+  const [showDeletionDialog, setShowDeletionDialog] = useState(false)
+  const [deletionDialogData, setDeletionDialogData] = useState<{
+    siteName: string
+    action: "schedule" | "waiting" | null
+    timeLeft: number
+  }>({ siteName: "", action: null, timeLeft: 0 })
 
   const normalizeUrl = (url: string) => {
     try {
@@ -92,30 +100,22 @@ export default function DashboardPage() {
         if (existingPendingTime) {
           const timeLeft = 24 * 60 * 60 * 1000 - (now - existingPendingTime)
           if (timeLeft > 0) {
-            const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000))
-            alert(`Must wait ${hoursLeft} more hours before deleting this site`)
+            setDeletionDialogData({
+              siteName: urlToRemove,
+              action: "waiting",
+              timeLeft
+            })
+            setShowDeletionDialog(true)
             return
           }
         }
 
-        setPendingDeletions({
-          ...pendingDeletions,
-          [urlToRemove]: now
+        setDeletionDialogData({
+          siteName: urlToRemove,
+          action: "schedule",
+          timeLeft: 0
         })
-
-        setTimeout(
-          () => {
-            setBlockLists((prev) => prev.filter((url) => url !== urlToRemove))
-            setPendingDeletions((prev) => {
-              const updated = { ...prev }
-              delete updated[urlToRemove]
-              return updated
-            })
-          },
-          24 * 60 * 60 * 1000
-        )
-
-        alert("Site will be removed in 24 hours")
+        setShowDeletionDialog(true)
       } else {
         setBlockLists(blockLists.filter((url) => url !== urlToRemove))
       }
@@ -128,6 +128,60 @@ export default function DashboardPage() {
       setPendingDeletions
     ]
   )
+
+  const handleConfirmScheduleDeletion = useCallback(() => {
+    const now = Date.now()
+    const urlToRemove = deletionDialogData.siteName
+
+    setPendingDeletions({
+      ...pendingDeletions,
+      [urlToRemove]: now
+    })
+
+    setTimeout(
+      () => {
+        setBlockLists((prev) => prev.filter((url) => url !== urlToRemove))
+        setPendingDeletions((prev) => {
+          const updated = { ...prev }
+          delete updated[urlToRemove]
+          return updated
+        })
+      },
+      24 * 60 * 60 * 1000
+    )
+
+    setShowDeletionDialog(false)
+    toast.success("Site removal scheduled", {
+      description: "Site will be removed in 24 hours"
+    })
+  }, [
+    deletionDialogData.siteName,
+    pendingDeletions,
+    setPendingDeletions,
+    setBlockLists
+  ])
+
+  const handleCancelWaiting = useCallback(() => {
+    const urlToRemove = deletionDialogData.siteName
+    setPendingDeletions((prev) => {
+      const updated = { ...prev }
+      delete updated[urlToRemove]
+      return updated
+    })
+    setShowDeletionDialog(false)
+    toast.success("Site removal cancelled")
+  }, [deletionDialogData.siteName, setPendingDeletions])
+
+  const handleCancelImmediately = useCallback(() => {
+    const urlToRemove = deletionDialogData.siteName
+    setPendingDeletions((prev) => {
+      const updated = { ...prev }
+      delete updated[urlToRemove]
+      return updated
+    })
+    setShowDeletionDialog(false)
+    toast.success("Site removal cancelled (debug mode)")
+  }, [deletionDialogData.siteName, setPendingDeletions])
 
   const updateBlockAction = useCallback(
     (
@@ -230,6 +284,18 @@ export default function DashboardPage() {
       </div>
 
       <Toaster />
+
+      <SiteDeletionDialog
+        open={showDeletionDialog}
+        onOpenChange={setShowDeletionDialog}
+        siteName={deletionDialogData.siteName}
+        action={deletionDialogData.action}
+        timeLeft={deletionDialogData.timeLeft}
+        isDebugMode={isDebugMode}
+        onConfirmSchedule={handleConfirmScheduleDeletion}
+        onCancelWaiting={handleCancelWaiting}
+        onCancelImmediately={handleCancelImmediately}
+      />
     </div>
   )
 }
