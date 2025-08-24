@@ -36,6 +36,13 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     "site.block.debug.mode",
     false
   )
+
+  // Auto-disable debug mode when NODE_ENV is production
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production" && debugMode) {
+      setDebugMode(false)
+    }
+  }, [debugMode, setDebugMode])
   const [currentTime, setCurrentTime] = useState(Date.now())
 
   const handleDelayToggle = () => {
@@ -288,6 +295,7 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
         action={dialogAction}
         timeLeft={getTimeLeft()}
         delayToggleTime={delayToggleTime}
+        isDebugMode={debugMode}
         onConfirmEnable={confirmEnable}
         onConfirmStartDisable={confirmStartDisable}
         onConfirmDisable={confirmDisable}

@@ -19,6 +19,7 @@ interface DelayConfirmationDialogProps {
     | null
   timeLeft: number
   delayToggleTime: number | null
+  isDebugMode?: boolean
   onConfirmEnable: () => void
   onConfirmStartDisable: () => void
   onConfirmDisable: () => void
@@ -33,6 +34,7 @@ export function DelayConfirmationDialog({
   action,
   timeLeft,
   delayToggleTime,
+  isDebugMode = false,
   onConfirmEnable,
   onConfirmStartDisable,
   onConfirmDisable,
@@ -114,6 +116,13 @@ export function DelayConfirmationDialog({
               feature.
             </DialogDescription>
             <DialogFooter className="flex gap-2">
+              {isDebugMode && (
+                <button
+                  onClick={onConfirmDisable}
+                  className="flex-1 bg-purple-600 text-white px-3 py-1 rounded text-xs font-mono hover:bg-purple-700 transition-all">
+                  debug bypass
+                </button>
+              )}
               <button
                 onClick={onRequestCancelConfirmation}
                 className="flex-1 bg-red-600 text-white px-3 py-1 rounded text-xs font-mono hover:bg-red-700 transition-all">
