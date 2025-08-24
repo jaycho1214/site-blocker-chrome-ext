@@ -4,6 +4,7 @@ import { toast } from "sonner"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
+import packageInfo from "../../package.json"
 import { DelayConfirmationDialog } from "./delay-confirmation-dialog"
 
 interface SettingsPageProps {
@@ -167,7 +168,9 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
             <div className="text-[10px] font-mono text-zinc-500">blocks</div>
           </div>
           <div className="px-2 py-2 border-r border-zinc-900">
-            <div className="text-sm font-mono text-white">1.1.1</div>
+            <div className="text-sm font-mono text-white">
+              {packageInfo.version}
+            </div>
             <div className="text-[10px] font-mono text-zinc-500">version</div>
           </div>
           <div className="px-2 py-2">
