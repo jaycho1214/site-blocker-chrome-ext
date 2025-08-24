@@ -8,6 +8,7 @@ interface BlockListProps {
   onAddUrl: () => void
   onRemoveUrl: (url: string) => void
   pendingDeletions?: Record<string, number>
+  siteTimestamps?: Record<string, number>
 }
 
 export function BlockList({
@@ -16,7 +17,8 @@ export function BlockList({
   onNewUrlChange,
   onAddUrl,
   onRemoveUrl,
-  pendingDeletions = {}
+  pendingDeletions = {},
+  siteTimestamps = {}
 }: BlockListProps) {
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -71,6 +73,16 @@ export function BlockList({
                   ? Math.ceil(timeLeft / (60 * 60 * 1000))
                   : 0
 
+              const siteCreatedAt = siteTimestamps[url]
+              const gracePeriod = 5 * 60 * 1000 // 5 minutes
+              const gracePeriodLeft = siteCreatedAt
+                ? Math.max(0, gracePeriod - (Date.now() - siteCreatedAt))
+                : 0
+              const isWithinGracePeriod = gracePeriodLeft > 0
+              const gracePeriodMinutesLeft = Math.ceil(
+                gracePeriodLeft / (60 * 1000)
+              )
+
               return (
                 <div
                   key={index}
@@ -92,6 +104,11 @@ export function BlockList({
                     {isPending && timeLeft > 0 && (
                       <span className="text-[8px] font-mono text-red-500 bg-red-950/50 px-1 rounded">
                         -{hoursLeft}h
+                      </span>
+                    )}
+                    {isWithinGracePeriod && !isPending && (
+                      <span className="text-[8px] font-mono text-green-500 bg-green-950/50 px-1 rounded">
+                        {gracePeriodMinutesLeft}m left
                       </span>
                     )}
                   </div>

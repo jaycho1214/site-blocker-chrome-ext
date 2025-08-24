@@ -14,6 +14,8 @@ interface SiteDeletionDialogProps {
   action: "schedule" | "waiting" | null
   timeLeft: number
   isDebugMode: boolean
+  isWithinGracePeriod?: boolean
+  gracePeriodLeft?: number
   onConfirmSchedule: () => void
   onCancelWaiting: () => void
   onCancelImmediately: () => void
@@ -26,11 +28,16 @@ export function SiteDeletionDialog({
   action,
   timeLeft,
   isDebugMode,
+  isWithinGracePeriod,
+  gracePeriodLeft,
   onConfirmSchedule,
   onCancelWaiting,
   onCancelImmediately
 }: SiteDeletionDialogProps) {
   const hoursLeft = Math.ceil(timeLeft / (60 * 60 * 1000))
+  const gracePeriodMinutesLeft = gracePeriodLeft
+    ? Math.ceil(gracePeriodLeft / (60 * 1000))
+    : 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,9 +50,22 @@ export function SiteDeletionDialog({
 
         {action === "schedule" && (
           <>
-            <DialogDescription className="text-xs text-zinc-300 font-mono">
-              <span className="text-white">{siteName}</span> will be removed in
-              24 hours due to delete delay protection.
+            <DialogDescription className="text-xs text-zinc-300 font-mono space-y-2">
+              <div>
+                <span className="text-white">{siteName}</span> will be removed
+                in 24 hours due to delete delay protection.
+              </div>
+              {gracePeriodLeft && gracePeriodLeft > 0 ? (
+                <div className="text-amber-300">
+                  Note: You missed the 5-minute grace period by{" "}
+                  {gracePeriodMinutesLeft} minute
+                  {gracePeriodMinutesLeft !== 1 ? "s" : ""}.
+                </div>
+              ) : (
+                <div className="text-zinc-400">
+                  Sites can be deleted immediately within 5 minutes of creation.
+                </div>
+              )}
             </DialogDescription>
             <DialogFooter className="flex gap-2">
               <button

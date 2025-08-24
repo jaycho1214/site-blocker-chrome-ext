@@ -31,6 +31,9 @@ export default function DashboardPage() {
     "site.block.list",
     []
   )
+  const [siteTimestamps, setSiteTimestamps] = useStorage<
+    Record<string, number>
+  >("site.block.timestamps", {})
   const [blockAction, setBlockAction] = useStorage<BlockAction>(
     "site.block.action",
     {
@@ -53,6 +56,8 @@ export default function DashboardPage() {
     siteName: string
     action: "schedule" | "waiting" | null
     timeLeft: number
+    isWithinGracePeriod?: boolean
+    gracePeriodLeft?: number
   }>({ siteName: "", action: null, timeLeft: 0 })
 
   const normalizeUrl = (url: string) => {
@@ -88,14 +93,45 @@ export default function DashboardPage() {
     }
 
     setBlockLists([...blockLists, trimmedUrl])
+    setSiteTimestamps({
+      ...siteTimestamps,
+      [trimmedUrl]: Date.now()
+    })
     setNewUrl("")
-  }, [newUrl, blockLists, setBlockLists, blockAction])
+  }, [
+    newUrl,
+    blockLists,
+    setBlockLists,
+    blockAction,
+    siteTimestamps,
+    setSiteTimestamps
+  ])
 
   const removeUrl = useCallback(
     (urlToRemove: string) => {
       if (deletionDelay) {
         const now = Date.now()
+        const siteCreatedAt = siteTimestamps[urlToRemove]
         const existingPendingTime = pendingDeletions[urlToRemove]
+
+        // Check if site was created within 5 minutes (300,000 ms)
+        const gracePeriod = 5 * 60 * 1000
+        const isWithinGracePeriod =
+          siteCreatedAt && now - siteCreatedAt < gracePeriod
+
+        if (isWithinGracePeriod) {
+          // Allow immediate deletion within grace period
+          setBlockLists(blockLists.filter((url) => url !== urlToRemove))
+          setSiteTimestamps((prev) => {
+            const updated = { ...prev }
+            delete updated[urlToRemove]
+            return updated
+          })
+          toast.success("Site removed", {
+            description: "Removed within 5-minute grace period"
+          })
+          return
+        }
 
         if (existingPendingTime) {
           const timeLeft = 24 * 60 * 60 * 1000 - (now - existingPendingTime)
@@ -110,14 +146,24 @@ export default function DashboardPage() {
           }
         }
 
+        const gracePeriodLeft = siteCreatedAt
+          ? Math.max(0, gracePeriod - (now - siteCreatedAt))
+          : 0
         setDeletionDialogData({
           siteName: urlToRemove,
           action: "schedule",
-          timeLeft: 0
+          timeLeft: 0,
+          isWithinGracePeriod: false,
+          gracePeriodLeft
         })
         setShowDeletionDialog(true)
       } else {
         setBlockLists(blockLists.filter((url) => url !== urlToRemove))
+        setSiteTimestamps((prev) => {
+          const updated = { ...prev }
+          delete updated[urlToRemove]
+          return updated
+        })
       }
     },
     [
@@ -125,7 +171,9 @@ export default function DashboardPage() {
       setBlockLists,
       deletionDelay,
       pendingDeletions,
-      setPendingDeletions
+      setPendingDeletions,
+      siteTimestamps,
+      setSiteTimestamps
     ]
   )
 
@@ -205,6 +253,7 @@ export default function DashboardPage() {
             onAddUrl={addUrl}
             onRemoveUrl={removeUrl}
             pendingDeletions={pendingDeletions}
+            siteTimestamps={siteTimestamps}
           />
         )
       case "actions":
@@ -225,6 +274,7 @@ export default function DashboardPage() {
             onAddUrl={addUrl}
             onRemoveUrl={removeUrl}
             pendingDeletions={pendingDeletions}
+            siteTimestamps={siteTimestamps}
           />
         )
     }
@@ -236,7 +286,8 @@ export default function DashboardPage() {
     removeUrl,
     blockAction,
     updateBlockAction,
-    pendingDeletions
+    pendingDeletions,
+    siteTimestamps
   ])
 
   return (
@@ -292,6 +343,8 @@ export default function DashboardPage() {
         action={deletionDialogData.action}
         timeLeft={deletionDialogData.timeLeft}
         isDebugMode={isDebugMode}
+        isWithinGracePeriod={deletionDialogData.isWithinGracePeriod}
+        gracePeriodLeft={deletionDialogData.gracePeriodLeft}
         onConfirmSchedule={handleConfirmScheduleDeletion}
         onCancelWaiting={handleCancelWaiting}
         onCancelImmediately={handleCancelImmediately}

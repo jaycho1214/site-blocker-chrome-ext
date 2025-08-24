@@ -1,5 +1,6 @@
 import { ExternalLink } from "lucide-react"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 import { useStorage } from "@plasmohq/storage/hook"
 
@@ -19,9 +20,14 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     null
   )
   const [showDialog, setShowDialog] = useState(false)
-  const [dialogAction, setDialogAction] = useState<"enable" | "disable" | null>(
-    null
-  )
+  const [dialogAction, setDialogAction] = useState<
+    | "enable"
+    | "disable-first"
+    | "disable-waiting"
+    | "disable-ready"
+    | "confirm-cancel"
+    | null
+  >(null)
   const [hasIncognitoAccess, setHasIncognitoAccess] = useState<boolean | null>(
     null
   )
@@ -29,6 +35,7 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     "site.block.debug.mode",
     false
   )
+  const [currentTime, setCurrentTime] = useState(Date.now())
 
   const handleDelayToggle = () => {
     if (!deletionDelay) {
@@ -36,17 +43,44 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
       setDialogAction("enable")
       setShowDialog(true)
     } else {
-      // Disabling - check if 24h have passed
-      setDialogAction("disable")
-      setShowDialog(true)
+      // User wants to disable - check if they're already in waiting period
+      if (delayToggleTime && getTimeLeft() > 0) {
+        // Already waiting - show waiting dialog with cancel option
+        setDialogAction("disable-waiting")
+        setShowDialog(true)
+      } else if (delayToggleTime && getTimeLeft() <= 0) {
+        // 24 hours have passed - show final confirmation
+        setDialogAction("disable-ready")
+        setShowDialog(true)
+      } else {
+        // First time trying to disable - ask for confirmation first
+        setDialogAction("disable-first")
+        setShowDialog(true)
+      }
     }
   }
 
   const confirmEnable = () => {
     setDeletionDelay(true)
-    setDelayToggleTime(Date.now())
+    setDelayToggleTime(null) // No timer when enabling
     setShowDialog(false)
     setDialogAction(null)
+    toast.success("Delete delay enabled", {
+      description:
+        "Sites can be deleted immediately within 5 minutes of creation"
+    })
+  }
+
+  const confirmStartDisable = () => {
+    // Start the 24h countdown
+    const newTime = Date.now()
+    setDelayToggleTime(newTime)
+    setCurrentTime(newTime) // Force immediate UI update
+    setShowDialog(false)
+    setDialogAction(null)
+    toast.success("Countdown started", {
+      description: "You can disable delete delay in 24 hours"
+    })
   }
 
   const confirmDisable = () => {
@@ -54,12 +88,24 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     setDelayToggleTime(null)
     setShowDialog(false)
     setDialogAction(null)
+    toast.success("Delete delay disabled", {
+      description: "Sites can now be deleted immediately"
+    })
+  }
+
+  const requestCancelConfirmation = () => {
+    setDialogAction("confirm-cancel")
+    // Keep dialog open but change to confirmation view
   }
 
   const cancelWaiting = () => {
-    setDelayToggleTime(null)
+    setDelayToggleTime(null) // Clear the timer - user wants to keep feature enabled
+    setCurrentTime(Date.now()) // Force immediate UI update
     setShowDialog(false)
     setDialogAction(null)
+    toast.success("Disable cancelled", {
+      description: "Delete delay remains enabled"
+    })
   }
 
   const handleRelock = () => {
@@ -88,6 +134,17 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
     checkIncognitoAccess()
   }, [])
 
+  useEffect(() => {
+    // Update current time when there's an active countdown
+    if (delayToggleTime && getTimeLeft() > 0) {
+      const interval = setInterval(() => {
+        setCurrentTime(Date.now())
+      }, 10000) // Update every 10 seconds for immediate feedback
+
+      return () => clearInterval(interval)
+    }
+  }, [delayToggleTime])
+
   const openExtensionSettings = () => {
     chrome.tabs.create({
       url: `chrome://extensions/?id=${chrome.runtime.id}`
@@ -110,7 +167,7 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
             <div className="text-[10px] font-mono text-zinc-500">blocks</div>
           </div>
           <div className="px-2 py-2 border-r border-zinc-900">
-            <div className="text-sm font-mono text-white">1.0.1</div>
+            <div className="text-sm font-mono text-white">1.1.1</div>
             <div className="text-[10px] font-mono text-zinc-500">version</div>
           </div>
           <div className="px-2 py-2">
@@ -138,6 +195,11 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
               {deletionDelay && (
                 <span className="text-green-400 text-[10px]">on</span>
               )}
+              {deletionDelay && delayToggleTime && getTimeLeft() > 0 && (
+                <span className="text-amber-400 text-[10px]">
+                  {Math.ceil(getTimeLeft() / (60 * 60 * 1000))}h left
+                </span>
+              )}
             </div>
           </button>
 
@@ -158,19 +220,21 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
             </div>
           </button>
 
-          <button
-            onClick={() => setDebugMode(!debugMode)}
-            className="w-full flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all">
-            <div className="flex items-center gap-2">
-              <span className="w-4 text-center">🐛</span>
-              <span>debug mode</span>
-            </div>
-            <div className="flex items-center gap-1">
-              {debugMode && (
-                <span className="text-amber-400 text-[10px]">on</span>
-              )}
-            </div>
-          </button>
+          {process.env.NODE_ENV === "development" && (
+            <button
+              onClick={() => setDebugMode(!debugMode)}
+              className="w-full flex items-center justify-between px-2 py-1 rounded text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all">
+              <div className="flex items-center gap-2">
+                <span className="w-4 text-center">🐛</span>
+                <span>debug mode</span>
+              </div>
+              <div className="flex items-center gap-1">
+                {debugMode && (
+                  <span className="text-amber-400 text-[10px]">on</span>
+                )}
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
@@ -217,9 +281,12 @@ export function SettingsPage({ blockListsCount }: SettingsPageProps) {
         onOpenChange={setShowDialog}
         action={dialogAction}
         timeLeft={getTimeLeft()}
+        delayToggleTime={delayToggleTime}
         onConfirmEnable={confirmEnable}
+        onConfirmStartDisable={confirmStartDisable}
         onConfirmDisable={confirmDisable}
         onCancelWaiting={cancelWaiting}
+        onRequestCancelConfirmation={requestCancelConfirmation}
         onRelock={handleRelock}
       />
     </div>
