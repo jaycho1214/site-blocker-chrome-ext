@@ -75,7 +75,12 @@ export default function DashboardPage() {
     const trimmedUrl = newUrl.trim()
     const normalizedUrl = normalizeUrl(trimmedUrl)
 
-    if (blockLists.includes(trimmedUrl)) return
+    if (blockLists.includes(trimmedUrl)) {
+      toast.error("Site already exists", {
+        description: `${trimmedUrl} is already in your block list`
+      })
+      return
+    }
 
     // Check if trying to add redirect URL
     if (blockAction.type === "redirect" && blockAction.redirectUrl) {
